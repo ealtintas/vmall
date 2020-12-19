@@ -13,7 +13,7 @@ HOST_END=200
 
 LEADER_IND=111  # docker swarm leader
 
-# b0 settings
+# VMHOST settings
 VMPATH="/mnt/sas/vms"
 
 # SSHCMD="ssh -p 2222 -o StrictHostKeyChecking=no -o User=root -o IdentityFile=~/.ssh/id_rsa"
