@@ -1,0 +1,278 @@
+#!/bin/bash
+# PURPOSE:
+# - Create and manage many libvirt vms easily
+# TODO:
+# - import funcs from "dm-all.sh"
+# - use vmnames from a "vmall.lst" file if it exists
+# REFS:
+# - https://unix.stackexchange.com/questions/293570/libvirt-command-to-start-up-all-guest-virtual-machines-which-have-auto-start-en
+
+MYDEBUGFLAG=false
+
+source "./vmall.settings"
+
+
+DEBUG () {
+    if [ $MYDEBUGFLAG == "true" ]; then
+        echo "DEBUG: $@"
+        # read
+    fi
+}
+
+
+do_help() {
+	cat <<MARKER
+$base - helps you create and manage many libvirt VMs.
+Syntax: $base [ <command> ] [ <options> ]
+You can use below commands for all the VMs:
+  hosts             - Dump hosts list suitable for use in /etc/hosts file
+  provision         - Clone new VMs from GOLDEN_HOSTNAME and make necessary changes (set: ips, hostname etc.)
+  pubip             - Dump public ip addresses of all VMs
+  ssh [CMD]         - Run CMD by ssh
+  sshbg [SEC] [CMD] - Run CMD by ssh in background and sleep SEC seconds before hoping to next server.
+  copyto            - SRC DST : Copy files from SRC to DST using rsync
+  swarm-init        - Initialize a docker swarm with all VMs
+  virsh [CMD]       - Run virsh CMD for all the vms. Eeamples "vmall virsh shutdown" or "vmall virsh start"
+  reboot            - Reboot all vms with SLEEP_MEDIUM seconds backgroud sleep
+MARKER
+}
+
+
+virsh_state() {
+    virsh list --all | grep " $HOST_NAME " | awk '{ print $3}'
+}
+
+wait_for_ping() {
+
+    WAIT_HOST=$1
+
+    printf "%s" "Pinging for $WAIT_HOST to be online..."
+
+    while ! ping -c 1 -n -w 1 $WAIT_HOST &> /dev/null
+    do
+        printf "%c" "."
+    done
+    printf "\n%s\n"  "$WAIT_HOST has been pinged succesfully, continuing..."
+}
+
+run_cmd () {
+    RUNCMD=$1; shift || true
+    DESCRIPTION=$1; shift || true
+
+    DEBUG $MYSSH $RUNCMD
+    MYRESULT=$($MYSSH $RUNCMD)
+    echo "$DESCRIPTION: $MYRESULT"
+}
+
+
+CMD=$1; shift || true
+PARAMS_REST=$@
+
+case "$CMD" in
+
+    sshbg)
+        BGSLEEP=$1; shift || true
+        PARAMS_REST=$@
+	;;
+
+    free)
+        PARAMS_REST="free | grep ^Mem"
+        CMD=ssh
+        # CMD=sshbg; BGSLEEP=0.5
+	;;
+
+    df)
+        PARAMS_REST="df -h | grep vda"
+        CMD=ssh
+        # CMD=sshbg; BGSLEEP=0.5
+	;;
+
+    reboot)
+        PARAMS_REST="reboot"
+        # CMD=ssh
+        CMD=sshbg; BGSLEEP=$SLEEP_MEDIUM
+	;;
+
+    pubip)
+        PARAMS_REST='curl -s ifconfig.me'
+        CMD=ssh
+        # CMD=sshbg; BGSLEEP=0.5
+	;;
+esac
+
+case "$CMD" in
+
+    hosts)
+        echo '### Hosts list "'$HOST_PREFIX'['$HOST_START'..'$HOST_END']" suitable for use in /etc/hosts file'
+        for IND_NUM in $(seq $HOST_START $HOST_END)
+        do 
+            IND_STR=$(printf "%03d" ${IND_NUM})
+            HOST_NAME="$HOST_PREFIX$IND_STR"
+            HOST_IP="$HOST_IP_PREFIX$IND_NUM"
+            echo -e "$HOST_IP\t$HOST_NAME"
+        done
+        exit $?
+    ;;
+
+    ssh)
+        for IND_NUM in $(seq $HOST_START $HOST_END)
+        do 
+            IND_STR=$(printf "%03d" $IND_NUM)
+            HOST_NAME="$HOST_PREFIX$IND_STR"
+            MYCMD="$SSHCMD $HOST_NAME $PARAMS_REST"
+            DEBUG $MYCMD
+            MYRESULT=$($MYCMD)
+            echo "[$HOST_NAME] $MYRESULT"
+		done  
+    	exit $?
+	;;
+
+    sshbg)
+        for IND_NUM in $(seq $HOST_START $HOST_END)
+        do 
+            IND_STR=$(printf "%03d" $IND_NUM)
+            HOST_NAME="$HOST_PREFIX$IND_STR"
+            RUNCMD=$PARAMS_REST
+            DEBUG "[$HOST_NAME] $RUNCMD"
+            $SSHCMD $HOST_NAME 'echo "[$(hostname)]"; '$RUNCMD &
+            sleep $BGSLEEP
+		done  
+    	exit $?
+	;;
+
+    dockerps)
+        for IND_NUM in $(seq $HOST_START $HOST_END)
+        do 
+            IND_STR=$(printf "%03d" $IND_NUM)
+            HOST_NAME="$HOST_PREFIX$IND_STR"
+            MYCMD="docker node ps $HOST_NAME $@"
+            DEBUG $MYCMD
+            MYRESULT=$($MYCMD)
+            echo "[$HOST_NAME] $MYRESULT"
+		done  
+    	exit $?
+	;;
+
+    virsh)
+        for IND_NUM in $(seq $HOST_START $HOST_END)
+        do 
+            IND_STR=$(printf "%03d" $IND_NUM)
+            HOST_NAME="$HOST_PREFIX$IND_STR"
+            MYCMD="virsh $HOST_NAME $@"
+            DEBUG $MYCMD
+            MYRESULT=$($MYCMD)
+            echo "[$HOST_NAME] $MYRESULT"
+		done  
+    	exit $?
+	;;
+
+    copyto)
+        SRC=$1; shift || true
+        DST=$1; shift || true
+        for IND_NUM in $(seq $HOST_START $HOST_END)
+        do 
+            IND_STR=$(printf "%03d" $IND_NUM)
+            HOST_NAME="$HOST_PREFIX$IND_STR"
+            echo "### Copying from $SRC => $HOST_NAME:$DST"
+            # RSYNCCMD="rsync -v -a -R -L --delete --bwlimit=10m" ### --delete may be harmfull be carefull
+            # RSYNCCMD='rsync -var -e "'$SSHCMD'" '$SRC' '$HOST_NAME':'$DST
+            # RSYNCCMD='rsync -var -e "ssh -p 1923 -o User=root" '$SRC' '$HOST_NAME':'$DST
+            # DEBUG $RSYNCCMD
+            # $RSYNCCMD
+            rsync -var -e "$SSHCMD" $SRC $HOST_NAME:$DST
+		done  
+    	exit $?
+	;;
+
+    provision)
+        echo '### Provisioning hosts: "'$HOST_PREFIX'['$HOST_START'..'$HOST_END']"'
+        for IND_NUM in $(seq $HOST_START $HOST_END)
+        do 
+            IND_STR=$(printf "%03d" $IND_NUM)
+            HOST_NAME="$HOST_PREFIX$IND_STR"
+            HOST_IP="$HOST_IP_PREFIX$IND_NUM"
+            HOST_LOCALIP="$HOST_LOCALIP_PREFIX$IND_NUM"
+            HOST_VOLUME="$VMPATH/$HOST_NAME.qcow2"
+
+
+            echo '>>> START PROVISIONING '$HOST_NAME
+
+            if [ "$(virsh_state $HOST_NAME)" != "" ]; then
+                echo "VM already exists: $HOST_NAME"
+                echo "Shut-down, undefine and vol-delete old vm: $HOST_NAME"
+                virsh shutdown --domain $HOST_NAME; sleep $SLEEP_SHORT
+                virsh undefine --domain $HOST_NAME; sleep $SLEEP_SHORT
+                virsh vol-delete $HOST_VOLUME; sleep $SLEEP_SHORT
+            else
+                echo "Start cloning: $GOLDEN_HOSTNAME => $HOST_NAME"
+                virt-clone --original $GOLDEN_HOSTNAME --name $HOST_NAME --file $HOST_VOLUME --check all=off
+                sleep $SLEEP_SHORT
+            fi
+
+            echo "Mark vm $HOST_NAME as autostart and then start it..."
+            virsh autostart $HOST_NAME
+            virsh start $HOST_NAME
+
+            echo "Waiting for $GOLDEN_HOSTNAME (which is to be => $HOST_NAME) to be available to ssh..."
+            sleep $SLEEP_SHORT
+            wait_for_ping $GOLDEN_HOSTNAME
+            sleep $SLEEP_SHORT
+
+            echo 'Start configuring '$GOLDEN_HOSTNAME' to become '$HOST_NAME
+ 
+            MYSSH="$SSHCMD $GOLDEN_HOSTNAME" #we are provisioning from $GOLDEN_HOSTNAME ($GOLDEN_IP)
+
+            run_cmd 'sed -i -e "s|'$GOLDEN_LOCALIP'|'$HOST_LOCALIP'|g" /etc/network/interfaces.d/enp1s0.conf;' '### 1: Set Local IP'
+            run_cmd 'sed -i -e "s|'$GOLDEN_IP'|'$HOST_IP'|g" /etc/network/interfaces.d/enp7s0.conf;' '### 2: Set public IP:'
+            run_cmd 'sed -i -e "s|'$GOLDEN_HOSTNAME'|'$HOST_NAME'|g" /etc/hosts;'   '### 3: Set hostname in /etc/hosts'
+            run_cmd 'hostnamectl set-hostname '$HOST_NAME'; hostname -f;' '### 4: set hostname'
+
+            echo '<<< DONE PROVISIONING '$HOST_NAME
+            sleep $SLEEP_SHORT
+            echo 'New machine '$HOST_NAME' is ready and will reboot...'
+            run_cmd 'reboot' '### 5: reboot'
+
+        done
+        exit $?
+    ;;
+
+    swarm-init)
+        LEADER_IND_STR=$(printf "%03d" $LEADER_IND)
+        LEADER_NAME="${HOST_PREFIX}${LEADER_IND_STR}"
+        LEADER_IP="${HOST_LOCALIP_PREFIX}${LEADER_IND}" # use private network for swarm communication
+
+        # LEADER_IP=$(docker-machine ssh ${LEADER_NAME} ifconfig enp1s0 | grep 'inet addr' | cut -d: -f2 | awk '{print $1}')
+
+        # create a swarm manager
+        echo "Create swarm leader: ${LEADER_NAME} ip: ${LEADER_IP}"
+        
+        MYSSH="$SSHCMD $LEADER_NAME"
+        run_cmd 'docker swarm init --advertise-addr '${LEADER_IP} 'swarm init'
+        run_cmd 'docker swarm update --task-history-limit=1' 'set task-history-limit=1'
+
+        MYCMD='docker swarm join-token -q worker'
+        DEBUG $MYSSH $MYCMD
+        JOIN_TOKEN=$($MYSSH $MYCMD)
+        echo 'JOIN_TOKEN='$JOIN_TOKEN
+
+        for IND_NUM in $(seq $HOST_START $HOST_END)
+        do 
+            IND_STR=$(printf "%03d" $IND_NUM)
+            HOST_NAME=$HOST_PREFIX$IND_STR
+            # docker swarm join --token SWMTKN-1-2986qx1b950zhh0pidhfobnaqn62pspevv798rtxj8rgnv1ysk-6hzgw2tbk0ifq8ba5hngm4uf4 192.168.200.22:2377
+            run_cmd 'docker swarm join --token "'${JOIN_TOKEN}'" ${LEADER_IP}:2377' "Joining to swarm:$HOST_NAME"
+		done  
+
+    	exit $?
+	;;
+
+    *)
+        do_help
+        exit $?
+    ;;
+esac
+
+exit
+
+# to copy docker credential to GOLDEN_HOST
+rsync -R -var /root/.docker/ n253:/

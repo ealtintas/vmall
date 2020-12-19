@@ -1,0 +1,25 @@
+# MACHINESFILE="machines.lst"
+# MYDEBUGFLAG=true
+
+GOLDEN_HOSTNAME="vm254"
+GOLDEN_IP="101.102.103.254"
+GOLDEN_LOCALIP="192.168.200.254"
+
+HOST_PREFIX="vm"
+HOST_IP_PREFIX="101.102.103."
+HOST_LOCALIP_PREFIX="192.168.100."
+HOST_START=101
+HOST_END=200
+
+LEADER_IND=111  # docker swarm leader
+
+# b0 settings
+VMPATH="/mnt/sas/vms"
+
+# SSHCMD="ssh -p 1923"
+# SSHCMD="ssh -p 1923 -o StrictHostKeyChecking=no -o User=root -o IdentityFile=~/.ssh/id_rsa"
+SSHCMD="ssh -p 1923 -o StrictHostKeyChecking=no -o User=root"
+
+SLEEP_LONG=45
+SLEEP_MEDIUM=5
+SLEEP_SHORT=2
