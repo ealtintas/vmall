@@ -16,6 +16,23 @@ This file should be adjusted according to your network/ip configuration. You als
 
 You should also create a GOLDEN_HOST which will be the base image for all of your vms and update the information about your GOLDEN_HOST in vmall.settings. Your GOLDEN_HOST's network should be configured as to be accessible by ssh from you main host and it should be shutdown before starting the provisioning process. In the provisioning process your golden host will be cloned, powered up accesed by ssh configured as a new vm and then rebooted in a loop. This way you will have as many vms as you like (currently up to 253) on a single host in an easy and automated way.
 
+### Usage
+
+```
+vmall - helps you create and manage many libvirt VMs.
+Syntax: vmall [ <command> ] [ <options> ]
+You can use below commands for all the VMs:
+  hosts             - Dump hosts list suitable for use in /etc/hosts file
+  provision         - Clone new VMs from GOLDEN_HOSTNAME and make necessary changes (set: ips, hostname etc.)
+  pubip             - Dump public ip addresses of all VMs
+  ssh [CMD]         - Run CMD by ssh
+  sshbg [SEC] [CMD] - Run CMD by ssh in background and sleep SEC seconds before hoping to next server.
+  copyto            - SRC DST : Copy files from SRC to DST using rsync
+  swarm-init        - Initialize a docker swarm with all VMs
+  virsh [CMD]       - Run virsh CMD for all the vms. Eeamples "vmall virsh shutdown" or "vmall virsh start"
+  reboot            - Reboot all vms with SLEEP_MEDIUM seconds backgroud sleep
+```
+
 Hope this script helps you :)
 
 Plesase feel free to customize or improve it and if you wish send me a merge reuqest.
