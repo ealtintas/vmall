@@ -79,13 +79,13 @@ case "$CMD" in
     free)
         PARAMS_REST="free | grep ^Mem"
         CMD=ssh
-        # CMD=sshbg; BGSLEEP=0.5
+        # CMD=sshbg; BGSLEEP=$SLEEP_SHORT
 	;;
 
     df)
         PARAMS_REST="df -h | grep vda"
         CMD=ssh
-        # CMD=sshbg; BGSLEEP=0.5
+        # CMD=sshbg; BGSLEEP=$SLEEP_SHORT
 	;;
 
     reboot)
@@ -97,7 +97,7 @@ case "$CMD" in
     pubip)
         PARAMS_REST='curl -s ifconfig.me'
         CMD=ssh
-        # CMD=sshbg; BGSLEEP=0.5
+        # CMD=sshbg; BGSLEEP=$SLEEP_SHORT
 	;;
 esac
 
@@ -175,11 +175,6 @@ case "$CMD" in
             IND_STR=$(printf "%03d" $IND_NUM)
             HOST_NAME="$HOST_PREFIX$IND_STR"
             echo "### Copying from $SRC => $HOST_NAME:$DST"
-            # RSYNCCMD="rsync -v -a -R -L --delete --bwlimit=10m" ### --delete may be harmfull be carefull
-            # RSYNCCMD='rsync -var -e "'$SSHCMD'" '$SRC' '$HOST_NAME':'$DST
-            # RSYNCCMD='rsync -var -e "ssh -p 1923 -o User=root" '$SRC' '$HOST_NAME':'$DST
-            # DEBUG $RSYNCCMD
-            # $RSYNCCMD
             rsync -var -e "$SSHCMD" $SRC $HOST_NAME:$DST
 		done  
     	exit $?
@@ -260,7 +255,6 @@ case "$CMD" in
         do 
             IND_STR=$(printf "%03d" $IND_NUM)
             HOST_NAME=$HOST_PREFIX$IND_STR
-            # docker swarm join --token SWMTKN-1-2986qx1b950zhh0pidhfobnaqn62pspevv798rtxj8rgnv1ysk-6hzgw2tbk0ifq8ba5hngm4uf4 192.168.200.22:2377
             run_cmd 'docker swarm join --token "'${JOIN_TOKEN}'" ${LEADER_IP}:2377' "Joining to swarm:$HOST_NAME"
 		done  
 
@@ -275,5 +269,6 @@ esac
 
 exit
 
+# TIPS:
 # to copy docker credential to GOLDEN_HOST
 rsync -R -var /root/.docker/ n253:/
