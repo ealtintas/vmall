@@ -11,6 +11,7 @@ MYDEBUGFLAG=false
 
 source "./vmall.settings"
 
+MYNAME=$(basename $0)
 
 DEBUG () {
     if [ $MYDEBUGFLAG == "true" ]; then
@@ -22,8 +23,8 @@ DEBUG () {
 
 do_help() {
 	cat <<MARKER
-$base - helps you create and manage many libvirt VMs.
-Syntax: $base [ <command> ] [ <options> ]
+$MYNAME - helps you create and manage many libvirt VMs.
+Syntax: $MYNAME [ <command> ] [ <options> ]
 You can use below commands for all the VMs:
   hosts             - Dump hosts list suitable for use in /etc/hosts file
   provision         - Clone new VMs from GOLDEN_HOSTNAME and make necessary changes (set: ips, hostname etc.)
