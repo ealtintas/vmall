@@ -16,9 +16,8 @@ LEADER_IND=111  # docker swarm leader
 # b0 settings
 VMPATH="/mnt/sas/vms"
 
-# SSHCMD="ssh -p 1923"
-# SSHCMD="ssh -p 1923 -o StrictHostKeyChecking=no -o User=root -o IdentityFile=~/.ssh/id_rsa"
-SSHCMD="ssh -p 1923 -o StrictHostKeyChecking=no -o User=root"
+# SSHCMD="ssh -p 2222 -o StrictHostKeyChecking=no -o User=root -o IdentityFile=~/.ssh/id_rsa"
+SSHCMD="ssh -o StrictHostKeyChecking=no -o User=root"
 
 SLEEP_LONG=45
 SLEEP_MEDIUM=5
