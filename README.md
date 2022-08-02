@@ -29,7 +29,7 @@ You can use below commands for all the VMs:
   sshbg [SEC] [CMD] - Run CMD by ssh in background and sleep SEC seconds before hoping to next server.
   copyto            - SRC DST : Copy files from SRC to DST using rsync
   swarm-init        - Initialize a docker swarm with all VMs
-  virsh [CMD]       - Run virsh CMD for all the vms. Eeamples "vmall virsh shutdown" or "vmall virsh start"
+  virsh [CMD]       - Run virsh CMD for all the vms. Examples "vmall virsh shutdown" or "vmall virsh start"
   reboot            - Reboot all vms with SLEEP_MEDIUM seconds backgroud sleep
 ```
 
